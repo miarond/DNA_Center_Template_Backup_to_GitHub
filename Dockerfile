@@ -1,0 +1,15 @@
+FROM python:alpine3.18
+
+ENV DNAC_SERVER=$DNAC_SERVER
+ENV DNAC_CREDS_USR=$DNAC_CREDS_USR
+ENV DNAC_CREDS_PSW=$DNAC_CREDS_PSW
+ENV GITHUB_APP_CREDS=$GITHUB_APP_CREDS
+ENV GITHUB_DNAC_TEMPLATE_REPO=$GITHUB_DNAC_TEMPLATE_REPO
+ENV TZ="America/New York"
+
+COPY . /templates
+
+WORKDIR /templates
+
+RUN apk add --no-cache tzdata git \
+  && pip install -r requirements.txt
