@@ -1,3 +1,5 @@
+[![published](https://static.production.devnetcloud.com/codeexchange/assets/images/devnet-published.svg)](https://developer.cisco.com/codeexchange/github/repo/miarond/DNA_Center_Template_Backup_to_GitHub)
+
 # Template Backup to GitHub with Optional Jenkins Integration
 
 One of the core prerequisites of adopting DevOps practices is to establish a Single Source of Truth.  This is typically a software version control repository of some kind - most often either GitHub or GitLab - and Infrastructure as Code (IaC) definitions are stored in it.  Finally, some form of a Continuous Integration/Continuous Deployment (CI/CD) pipeline is created in order to:
