@@ -80,11 +80,9 @@ def clone_github_repo(github_repo_url, github_creds):
     url = f'{url_split[0]}//{github_creds}@{url_split[1]}'
     # Clone or Pull repo to sub-directory named 'github'
     if os.path.exists('github'):
-        print('Github repo directory already exists.')
-        repo = Repo('github')
-        repo.remote().pull
-    else:
-        repo = Repo.clone_from(url, 'github')
+        print('Removing existing GitHub repo directory.')
+        shutil.rmtree('github')
+    repo = Repo.clone_from(url, 'github')
     # Capture all unique filenames and paths of templates in Git repository
     os.chdir(f'{base_working_dir}/github')
     git_templates.update(glob.glob('projects/*/*.json'))
