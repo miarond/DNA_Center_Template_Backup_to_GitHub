@@ -51,6 +51,12 @@ github_repo_url = os.getenv('GITHUB_DNAC_TEMPLATE_REPO')
 github_creds = os.getenv('GITHUB_APP_CREDS')
 dnac_base_url = f'https://{dnac_server}'
 
+# Check if Environment Variables are empty or None.
+for var in [dnac_server, dnac_user, dnac_password, github_repo_url, github_creds, dnac_base_url]:
+    if var == None or len(str(var)) == 0:
+        print(f'One of the required Environment Variables is empty.')
+        sys.exit(1)
+
 # Establish session to DNA Center - update version # if necessary
 api = dnacentersdk.DNACenterAPI(dnac_user, dnac_password, base_url=dnac_base_url, verify=False, version='2.3.3.0')
 # Track counters for final results printout
