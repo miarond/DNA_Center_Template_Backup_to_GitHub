@@ -48,11 +48,12 @@ dnac_server = os.getenv('DNAC_SERVER')
 dnac_user = os.getenv('DNAC_CREDS_USR')
 dnac_password = os.getenv('DNAC_CREDS_PSW')
 github_repo_url = os.getenv('GITHUB_DNAC_TEMPLATE_REPO')
-github_creds = os.getenv('GITHUB_APP_CREDS')
+github_user = os.getenv('GITHUB_APP_CREDS_USR')
+github_password = os.getenv('GITHUB_APP_CREDS_PSW')
 dnac_base_url = f'https://{dnac_server}'
 
 # Check if Environment Variables are empty or None.
-for var in [dnac_server, dnac_user, dnac_password, github_repo_url, github_creds, dnac_base_url]:
+for var in [dnac_server, dnac_user, dnac_password, github_repo_url, github_user, github_password, dnac_base_url]:
     if var == None or len(str(var)) == 0:
         print(f'One of the required Environment Variables is empty.')
         sys.exit(1)
@@ -74,17 +75,17 @@ counters = {
 dnac_templates = set()
 git_templates = set()
 
-def clone_github_repo(github_repo_url, github_creds):
+def clone_github_repo(github_repo_url, github_user, github_password):
     """
     Connect to GitHub and clone the given repository.
-    params: github_repo_url (str), github_creds (str)
+    params: github_repo_url (str), github_user (str), github_password (str)
     returns: repo (git.Repo() Object)
     """
     global git_templates
-    # Insert github_creds into URL
+    # Insert GitHub credentials into URL
     url_split = github_repo_url.split('//')
-    url = f'{url_split[0]}//{github_creds}@{url_split[1]}'
-    # Clone or Pull repo to sub-directory named 'github'
+    url = f'{url_split[0]}//{github_user}:{github_password}@{url_split[1]}'
+    # If directory already exists, remove it.
     if os.path.exists('github'):
         print('Removing existing GitHub repo directory.')
         shutil.rmtree('github')
@@ -241,7 +242,7 @@ if __name__ == '__main__':
     parser.add_argument('--verbose', '-v', action='store_true', required=False, help='Print verbose output for troubleshooting.')
     args = parser.parse_args()
 
-    repo = clone_github_repo(github_repo_url, github_creds)
+    repo = clone_github_repo(github_repo_url, github_user, github_password)
     # If using cached Docker image and 'projects/' dir exists, delete it first.
     # Ran into this problem while testing with Jenkins.
     if os.path.exists('projects'):

@@ -143,7 +143,7 @@ There is a lot going on "behind the scenes" here, which Jenkins makes simple for
     3. GitHub API Credentials:
         1. **Name:** `GitHub_Personal_Access_Token`
         2. **Type:** `Username with password`
-            1. *NOTE: This credential will be of the same type as the DNA Center credentials listed above, but we will use just the original environment variable name - not the separate `_USR` and `_PSW` variables.  This is because a "Username with password" credential is passed into the original environment variable in the format `username:password`.  This format can be prepended to the beginning of the GitHub API URL to provide authentication.  Example: `https://username:password@github_url.com/repository_path.git`.*
+            1. *NOTE: This credential will be also be a "Username with password" type, like the DNA Center credentials above.  The Username and Password (PAT) can be prepended to the beginning of the GitHub API URL to provide authentication.  Example: `https://username:password@github_url.com/repository_path.git`.*
     4. GitHub Template Repository URL:
         1. **Name:** `DNAC_Github_Template_Repo`
         2. **Type:** `Secret text`
