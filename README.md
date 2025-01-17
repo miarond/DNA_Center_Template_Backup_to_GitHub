@@ -167,3 +167,24 @@ There is a lot going on "behind the scenes" here, which Jenkins makes simple for
 ## Script Workflow
 
 <img src="assets/script_workflow.png" width=600>
+
+## Restore Templates to Catalyst Center
+
+The Python script named `dnac_template_restore.py` has been added to simplify and automate the task of restoring backed up templates to a Catalyst Center appliance, in the event of disaster recovery or other loss of data.  **PLEASE NOTE:** Backward compatibility between older versions of exported template files and newer versions of Catalyst Center software is not guaranteed, and will often fail during import due to changes in the payload structure.  In these situations you will need to either edit the JSON file to fix any incompatibilities, or simply recreate the template manually.
+
+This script will download a copy of your GitHub repository (created by using the `dnac_template_export.py` script) and recursively search the directory structure.  It will create any Projects that do not already exist and will attempt to import all Templates belonging to each Project.  In its current form, the script imports all Project templates in a single bulk task, so if one or more of the templates already exists it will attempt to create commit a new version.  If an error is encountered, it is possible that ALL templates included in the Project may fail to import - even if only one templates contains an error.
+
+To use this script, ensure that your `.env` file has been updated with accurate information, then run the script:
+
+```
+python3 dnac_template_restore.py
+```
+
+The script accepts two optional arguments:
+
+- `-v` or `--verbose`
+    - Enable Debug level logging to both the terminal and the log file
+- `-d` or `--debug_api`
+    - Enable Debug level logging in the `dnacentersdk` Python package.  **This will significantly increase logging output.**
+
+Logging is output to both the terminal and a log file named `dnac_template_restore_<current date/time>.log`.  When Verbose logging is enabled, the generated template payloads for the template import API are exported to a JSON file named `project_payload_<current date/time>.json`.
