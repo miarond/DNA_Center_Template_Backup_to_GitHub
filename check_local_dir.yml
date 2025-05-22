@@ -1,0 +1,16 @@
+---
+- name: Check Local Directory
+  hosts: localhost
+  any_errors_fatal: true
+  gather_facts: no
+  tasks:
+    - name: Get working directory
+      ansible.builtin.command: pwd
+      register: pwd
+    - debug:
+        var: pwd
+    - name: LS
+      ansible.builtin.command: ls -al .
+      register: ls
+    - debug:
+        var: ls

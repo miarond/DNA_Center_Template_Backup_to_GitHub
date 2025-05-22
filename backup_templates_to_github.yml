@@ -1,0 +1,46 @@
+---
+- name: Backup Catalyst Center Templates
+  hosts: localhost
+  any_errors_fatal: true
+  gather_facts: no
+  tasks:
+    - name: Install Ansible Collections
+      ansible.builtin.command: /usr/bin/ansible-galaxy collection install cisco.catalystcenter:2.1.4
+      # environment:
+      #   http_proxy: "http://<your_proxy_server>:port"
+      #   https_proxy: "http://<your_proxy_server>:port"
+      register: galaxy_results
+    - name: Install Python Requirements
+      ansible.builtin.command: /usr/bin/pip3 install --user -r requirements.txt
+      # environment:
+      #   http_proxy: "http://<your_proxy_server>:port"
+      #   https_proxy: "http://<your_proxy_server>:port"
+      register: pip_results
+    - name: Run Template Backup
+      ansible.builtin.command: /usr/bin/python3 dnac_template_export-ansible-tower.py
+      environment:
+        DNAC_SERVER: '{{ lookup("ansible.builtin.env", "CATC_SERVER") }}'
+        CATC_USERNAME: '{{ lookup("ansible.builtin.env", "CATC_USERNAME") }}'
+        CATC_PASSWORD: '{{ lookup("ansible.builtin.env", "CATC_PASSWORD") }}'
+        GITHUB_USERNAME: '{{ lookup("ansible.builtin.env", "GITHUB_USERNAME") }}'
+        GITHUB_PASSWORD: '{{ lookup("ansible.builtin.env", "GITHUB_PASSWORD") }}'
+        GITHUB_DNAC_TEMPLATE_REPO: '{{ lookup("ansible.builtin.env", "GITHUB_REPO_URL") }}'
+      register: result
+    - name: Check Result
+      ansible.builtin.debug:
+        var: result
+    - name: Send Webex Notification
+      ansible.builtin.uri:
+        url: https://webexapis.com/v1/messages
+        method: POST
+        body_format: json
+        headers:
+          Authorization: 'Bearer {{ lookup("env", "WEBEX_BOT_TOKEN") }}'
+        body:
+          # roomId specified in extra vars coming from Host record in Ansible Automation Platform
+          roomId: '{{ webex_room_id }}'
+          text: '{{ result.stdout }}'
+      when: '"GitHub repository has been updated" in result.stdout'
+      # environment:
+      #   http_proxy: "http://<your_proxy_server>:port"
+      #   https_proxy: "http://<your_proxy_server>:port"

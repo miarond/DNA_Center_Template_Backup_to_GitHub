@@ -1,26 +1,3 @@
-"""
-Copyright (c) 2023 Cisco and/or its affiliates.
-
-This software is licensed to you under the terms of the Cisco Sample
-Code License, Version 1.1 (the "License"). You may obtain a copy of the
-License at
-
-               https://developer.cisco.com/docs/licenses
-
-All use of the material herein must be in accordance with the terms of
-the License. All rights not expressly granted by the License are
-reserved. Unless required by applicable law or agreed to separately in
-writing, software distributed under the License is distributed on an "AS
-IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
-or implied.
-
-"""
-
-__author__ = "Aron Donaldson <ardonald@cisco.com>"
-__contributors__ = ""
-__copyright__ = "Copyright (c) 2023 Cisco and/or its affiliates."
-__license__ = "Cisco Sample Code License, Version 1.1"
-
 import os
 import sys
 import time
@@ -28,28 +5,26 @@ import json
 import glob
 import shutil
 import time
+import logging
 from argparse import ArgumentParser
 
 # External packages from PyPi.
 from deepdiff import DeepDiff
-import dnacentersdk
+import catalystcentersdk
 from tabulate import tabulate # Only used for printing results to STDOUT - can be re-factored to not use this package.
 from git import Repo
 
 base_working_dir = os.getcwd()
-# The "_USR" and "_PSW" suffixes are automatically created by the Jenkins
-# Environment "credentials()" helper method when the credential kind is
-# "Username with password"
 # If we're working on in a dev environment, use dotenv to load '.env' file
 if os.path.exists('.env'):
     from dotenv import load_dotenv
     load_dotenv()
-dnac_server = os.getenv('DNAC_SERVER')
-dnac_user = os.getenv('DNAC_CREDS_USR')
-dnac_password = os.getenv('DNAC_CREDS_PSW')
-github_repo_url = os.getenv('GITHUB_DNAC_TEMPLATE_REPO')
-github_user = os.getenv('GITHUB_APP_CREDS_USR')
-github_password = os.getenv('GITHUB_APP_CREDS_PSW')
+dnac_server = os.getenv('CATC_SERVER')
+dnac_user = os.getenv('CATC_USERNAME')
+dnac_password = os.getenv('CATC_PASSWORD')
+github_repo_url = os.getenv('GITHUB_REPO_URL')
+github_user = os.getenv('GITHUB_USERNAME')
+github_password = os.getenv('GITHUB_PASSWORD')
 dnac_base_url = f'https://{dnac_server}'
 
 # Check if Environment Variables are empty or None.
@@ -59,7 +34,7 @@ for var in [dnac_server, dnac_user, dnac_password, github_repo_url, github_user,
         sys.exit(1)
 
 # Establish session to DNA Center - update version # if necessary
-api = dnacentersdk.DNACenterAPI(dnac_user, dnac_password, base_url=dnac_base_url, verify=False, version='2.3.3.0')
+api = catalystcentersdk.CatalystCenterAPI(dnac_user, dnac_password, base_url=dnac_base_url, verify=False, version='2.3.7.9')
 # Track counters for final results printout
 counters = {
     'dnac_projects': 0,
@@ -100,14 +75,14 @@ def clone_github_repo(github_repo_url, github_user, github_password):
 def export_templates(args, api):
     """
     Get a list of all projects, create a folder structure using their names, and then export any new or changed templates into their appropriate folder.
-    params: api (dnacentersdk Session Object)
+    params: api (catalystcentersdk Session Object)
     returns: 
     """
     global counters
     global dnac_templates
-    projects = api.configuration_templates.get_projects()
+    projects = api.configuration_templates.gets_a_list_of_projects()
     if args.verbose:
-        print(f'Projects:\n{json.dumps(projects, indent=4)}')
+        logging.DEBUG(f'Projects:\n{json.dumps(projects, indent=4)}')
     
     if len(projects) > 0:
         # Collect template IDs for next API call
@@ -125,16 +100,20 @@ def export_templates(args, api):
         
         # Check status of task in loop
         loop_counter = 0
-        while True and loop_counter < 10:
+        while True and loop_counter < 20:
             export_result = api.task.get_task_by_id(template_task.response.taskId)
             # If key "endTime" is defined, break loop
             if export_result.response.endTime:
                 break
             else:
                 loop_counter += 1
-                time.sleep(0.5)
+                time.sleep(1)
+        # If loop counter exceeds max value, exit the script with an error.
+        if loop_counter >= 30:
+            logging.CRITICAL(f'Template export API request took too long to process - exiting script!')
+            sys.exit(1)
         if args.verbose:
-            print(f'Template export result:\n{json.dumps(export_result, indent=4)}')
+            logging.DEBUG(f'Template export result:\n{json.dumps(export_result, indent=4)}')
         templates = json.loads(export_result.response.data)
         return templates
 
@@ -170,7 +149,7 @@ def deepdiff_files(args, template_export):
         # filename to 'result'
         counters['new_templates'] += 1
         if args.verbose:
-            print(f'File {git_filename} does not exist in git repo.')
+            logging.DEBUG(f'File {git_filename} does not exist in git repo.')
         result['values_changed'] = {
             'root': {
                 'new_value': git_filename
@@ -183,7 +162,7 @@ def deepdiff_files(args, template_export):
             file.write(json.dumps(template_export, indent=4))
         file.close()
     if args.verbose:
-        print(f'DeepDiff Result:\n{json.dumps(result, indent=4)}')
+        logging.DEBUG(f'DeepDiff Result:\n{result}')
     return
 
 
@@ -214,7 +193,7 @@ def missing_file_cleanup(args, repo):
     # Get differences between filename sets
     deleted_files = git_templates.difference(dnac_templates)
     if args.verbose:
-        print(f'Files to be deleted from Git repo:\n{deleted_files}')
+        logging.DEBUG(f'Files to be deleted from Git repo:\n{deleted_files}')
     if len(deleted_files) > 0:
         counters['files_deleted'] = len(deleted_files)
         for file in deleted_files:
@@ -231,7 +210,7 @@ def git_commit_and_push(repo):
     repo.index.add('projects/*')
     timestamp = time.strftime("%Y-%m-%d %I:%M:%S%p %Z", time.localtime())
     # Commit staged files to index with commit message & timestamp.
-    repo.index.commit(message=f'Templates updated by Jenkins Pipeline - {timestamp}')
+    repo.index.commit(message=f'Templates updated by Ansible - {timestamp}')
     # Push commit up to GitHub
     repo.remotes.origin.push()
 
@@ -241,6 +220,10 @@ if __name__ == '__main__':
     parser.add_argument('--compare_only', '-c', action='store_true', required=False, help='Download files and run comparison operation only.')
     parser.add_argument('--verbose', '-v', action='store_true', required=False, help='Print verbose output for troubleshooting.')
     args = parser.parse_args()
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
 
     repo = clone_github_repo(github_repo_url, github_user, github_password)
     # If using cached Docker image and 'projects/' dir exists, delete it first.
@@ -256,9 +239,9 @@ if __name__ == '__main__':
         deepdiff_files(args, [template])
     
     if args.verbose:
-        print(f'Git repo templates:\n{git_templates}\n')
-        print(f'DNA Center templates:\n{dnac_templates}\n')
-        print(f'Templates to be deleted:\n{git_templates.difference(dnac_templates)}\n')
+        logging.DEBUG(f'Git repo templates:\n{git_templates}\n')
+        logging.DEBUG(f'DNA Center templates:\n{dnac_templates}\n')
+        logging.DEBUG(f'Templates to be deleted:\n{git_templates.difference(dnac_templates)}\n')
     # If 'compare_only' CLI argument was NOT given, proceed.
     if not args.compare_only:
         # If there were any changed or new templates, proceed.
